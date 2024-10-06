@@ -18,3 +18,9 @@ This is a simple 3D orrery web application that simulates the solar system. It f
 - CSS
 - JavaScript
 - Three.js
+
+## Credits
+-Three.js: A JavaScript library used for 3D rendering.
+-OrbitControls: An extension of Three.js for intuitive camera controls.
+## License
+This project is licensed under the MIT License - see the LICENSE file for details.
