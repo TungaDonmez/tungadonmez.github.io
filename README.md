@@ -1,4 +1,4 @@
-# Orrery Web App v10
+# Orrery Web App v1
 
 This is a simple 3D orrery web application that simulates the solar system. It features:
 
