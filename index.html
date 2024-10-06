@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Orrery Web App v10</title>
+    <style>
+        body { margin: 0; display: flex; }
+        canvas { display: block; }
+        #ui {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            z-index: 100;
+        }
+        .tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            pointer-events: none;
+            display: none;
+            font-size: 14px;
+            max-width: 200px;
+        }
+        #speedLabel {
+            margin-left: 10px;
+        }
+        #infoPanel {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 15px;
+            border-radius: 5px;
+            display: none;
+        }
+        #playPauseButton, #resetCameraButton, #resetSpeedButton {
+            margin-top: 10px;
+            padding: 5px 10px;
+            background-color: #444;
+            border: none;
+            color: white;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+<div id="ui">
+    <label for="speed">Time Speed:</label>
+    <input type="range" id="speed" min="0.0" max="5" step="0.1" value="1">
+    <span id="speedLabel">Speed Factor: 1x</span>
+    <button id="playPauseButton">Pause</button>
+    <button id="resetCameraButton">Reset Camera</button>
+    <button id="resetSpeedButton">Reset Speed</button>
+</div>
+
+<div class="tooltip" id="tooltip"></div>
+<div id="infoPanel"></div>
+
+<!-- Including Three.js and OrbitControls from a CDN -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128/examples/js/controls/OrbitControls.js"></script>
+
+<script>
+    let scene, camera, renderer, controls;
+    let planets = [];
+    let timeSpeed = 1;
+    let isPaused = false;
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
+    const tooltip = document.getElementById('tooltip');
+    const infoPanel = document.getElementById('infoPanel');
+
+    function init() {
+        // Scene setup
+        scene = new THREE.Scene();
+
+        // Camera setup
+        camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 500);
+        camera.position.set(0, 0, 150);
+
+        // Renderer setup
+        renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // Controls setup
+        controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableZoom = true;
+        controls.mouseButtons.RIGHT = null; // Disable right-click
+
+        // Light setup
+        const ambientLight = new THREE.AmbientLight(0x404040);
+        scene.add(ambientLight);
+
+        const pointLight = new THREE.PointLight(0xffffff, 1, 500);
+        pointLight.position.set(50, 50, 50);
+        scene.add(pointLight);
+
+        // Create celestial bodies with single colors and detailed information
+        createCelestialBody("Sun", 10, 0xffff00, 0, 0, 
+            "The Sun is the star at the center of our solar system. It is about 4.6 billion years old and contains 99.86% of the solar system's mass.");
+        createCelestialBody("Mercury", 1.5, 0x7f7f7f, 20, 0.02, 
+            "Mercury is the closest planet to the Sun. It has a thin atmosphere and is the smallest planet in our solar system.");
+        createCelestialBody("Venus", 2, 0xffcc00, 30, 0.015, 
+            "Venus is the second planet from the Sun and is similar in structure to Earth, but its atmosphere is thick and toxic.");
+        createCelestialBody("Earth", 2, 0x0000ff, 40, 0.01, 
+            "Earth is the third planet from the Sun and the only astronomical object known to harbor life.");
+        createCelestialBody("Mars", 1.5, 0xff4500, 50, 0.008, 
+            "Mars is the fourth planet from the Sun. It is known as the Red Planet due to iron oxide on its surface.");
+        createCelestialBody("Jupiter", 4, 0xffa500, 60, 0.004, 
+            "Jupiter is the largest planet in our solar system and has a Great Red Spot, a giant storm larger than Earth.");
+        createCelestialBody("Saturn", 4, 0xcd853f, 80, 0.003, 
+            "Saturn is known for its stunning rings, which are made up of ice particles, rock debris, and dust.");
+        createCelestialBody("Uranus", 3, 0x00ffff, 100, 0.002, 
+            "Uranus is a unique blue planet that rotates on its side, making its axial tilt the largest of any planet.");
+        createCelestialBody("Neptune", 3, 0x00008b, 120, 0.002, 
+            "Neptune is known for its deep blue color and is the farthest planet from the Sun.");
+
+        // Create orbits
+        createOrbits();
+
+        // Animation loop
+        animate();
+
+        // UI interaction
+        const speedInput = document.getElementById('speed');
+        const speedLabel = document.getElementById('speedLabel');
+        const playPauseButton = document.getElementById('playPauseButton');
+        const resetCameraButton = document.getElementById('resetCameraButton');
+        const resetSpeedButton = document.getElementById('resetSpeedButton');
+
+        speedInput.addEventListener('input', (e) => {
+            timeSpeed = parseFloat(e.target.value);
+            speedLabel.textContent = `Speed Factor: ${timeSpeed.toFixed(1)}x`;
+        });
+
+        playPauseButton.addEventListener('click', () => {
+            isPaused = !isPaused;
+            playPauseButton.textContent = isPaused ? 'Play' : 'Pause';
+        });
+
+        resetCameraButton.addEventListener('click', () => {
+            camera.position.set(0, 0, 150);
+            controls.update();
+        });
+
+        resetSpeedButton.addEventListener('click', () => {
+            timeSpeed = 1;
+            speedInput.value = timeSpeed;
+            speedLabel.textContent = `Speed Factor: ${timeSpeed.toFixed(1)}x`;
+        });
+
+        // Mouse move event
+        window.addEventListener('mousemove', onMouseMove);
+        window.addEventListener('mouseleave', () => {
+            tooltip.style.display = 'none';
+            infoPanel.style.display = 'none';
+        });
+    }
+
+    // Function to create a celestial body with a colored sphere
+    function createCelestialBody(name, size, color, orbitRadius, speed, details) {
+        const geometry = new THREE.SphereGeometry(size, 32, 32);
+        const material = new THREE.MeshBasicMaterial({ color: color });
+        const body = new THREE.Mesh(geometry, material);
+
+        body.userData = {
+            orbitRadius: orbitRadius,
+            angle: Math.random() * 2 * Math.PI,
+            speed: speed,
+            name: name,
+            details: details,
+            rotationSpeed: 0.02 // Rotation speed around its own axis
+        };
+
+        scene.add(body);
+        planets.push(body);
+    }
+
+    // Function to create orbits for planets
+    function createOrbits() {
+        planets.forEach(planet => {
+            const orbitGeometry = new THREE.CircleGeometry(planet.userData.orbitRadius, 64);
+            const orbitMaterial = new THREE.LineBasicMaterial({ color: 0x888888, opacity: 0.5 });
+            const orbit = new THREE.LineLoop(orbitGeometry, orbitMaterial);
+            orbit.rotation.x = Math.PI / 2; // Align the orbit
+            scene.add(orbit);
+        });
+    }
+
+    // Function to update the positions and rotation of planets along their orbits
+    function updatePlanets() {
+        if (!isPaused) {
+            planets.forEach(planet => {
+                if (timeSpeed > 0) {
+                    planet.userData.angle += planet.userData.speed * timeSpeed;
+                    planet.position.x = planet.userData.orbitRadius * Math.cos(planet.userData.angle);
+                    planet.position.z = planet.userData.orbitRadius * Math.sin(planet.userData.angle);
+
+                    // Rotate the planet around its own axis
+                    planet.rotation.y += planet.userData.rotationSpeed;
+                }
+            });
+        }
+    }
+
+    function animate() {
+        requestAnimationFrame(animate);
+        updatePlanets();
+        controls.update();
+        renderer.render(scene, camera);
+    }
+
+    // Function to handle mouse movement and show tooltips
+    function onMouseMove(event) {
+        mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+        mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+        raycaster.setFromCamera(mouse, camera);
+        const intersects = raycaster.intersectObjects(planets);
+
+        if (intersects.length > 0) {
+            const object = intersects[0].object;
+            tooltip.style.display = 'block';
+            tooltip.innerHTML = `<strong>${object.userData.name}</strong><br>${object.userData.details}`;
+            tooltip.style.left = `${event.clientX + 10}px`;
+            tooltip.style.top = `${event.clientY + 10}px`;
+            infoPanel.style.display = 'block';
+            infoPanel.innerHTML = `<strong>${object.userData.name}</strong><br>${object.userData.details}`;
+        } else {
+            tooltip.style.display = 'none';
+            infoPanel.style.display = 'none';
+        }
+    }
+
+    // Handle window resize
+    window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    init();
+</script>
+</body>
+</html>
