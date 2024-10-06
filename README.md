@@ -6,6 +6,8 @@ This is a simple 3D orrery web application that simulates the solar system. It f
 - Tooltips with information about each planet
 - Planetary orbits displayed
 - Reset camera and speed buttons
+- A search bar
+- Planet scaling for accuracy
 
 ## How to Run
 
@@ -66,6 +68,9 @@ Or just visit [tungadonmez.github.io](https://tungadonmez.github.io)
 10. **Asteroid 1999 RQ36**: 
     - Source: Target of the OSIRIS-REx mission.
     - Link: [NASA OSIRIS-REx](https://www.nasa.gov/osiris-rex)
+
+11. **https://science.nasa.gov**
+    -For the information about planets
 
 ## License
 This project is licensed under the MIT License - see the LICENSE file for details.
