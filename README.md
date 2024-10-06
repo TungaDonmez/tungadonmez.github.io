@@ -1,4 +1,4 @@
-# Orrery Web App v2 by Team Constellation
+# Orrery Web App v3 by Team Constellation
 
 This is a simple 3D orrery web application that simulates the solar system. It features:
 
