@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Orrery Web App v2 by Team Constellation</title>
+    <title>Orrery Web App v2</title>
     <style>
         body { margin: 0; display: flex; }
         canvas { display: block; }
@@ -35,6 +35,12 @@
             border-radius: 5px;
             display: none;
         }
+        #searchBar {
+            padding: 8px;
+            border: none;
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
         button {
             padding: 8px 12px;
             background-color: #007bff;
@@ -60,6 +66,7 @@
 </head>
 <body>
 <div id="ui">
+    <input type="text" id="searchBar" placeholder="Search celestial bodies...">
     <label for="speed">Time Speed:</label>
     <input type="range" id="speed" min="0.0" max="5" step="0.1" value="1">
     <span id="speedLabel">Speed Factor: 1x</span>
@@ -86,8 +93,8 @@
     const raycaster = new THREE.Raycaster();
     const mouse = new THREE.Vector2();
     const tooltip = document.getElementById('tooltip');
-    const infoPanel = document.getElementById('infoPanel');
     const scaleLabel = document.getElementById('scaleLabel');
+    const searchBar = document.getElementById('searchBar');
 
     function init() {
         // Scene setup
@@ -116,7 +123,7 @@
         scene.add(pointLight);
 
         // Create celestial bodies with single colors and speeds
-        createCelestialBody("Sun", 10, 0xffff00, 0, 0, "The Sun is the star at the center of our solar system.<br>Speed: -");
+        createCelestialBody("Sun", 10, 0xffff00, 0, 0, "The Sun is the star at the center of our solar system.");
         createCelestialBody("Mercury", 1.5, 0x7f7f7f, 20, 47.87, "Mercury is the closest planet to the Sun.<br>Speed: 47.87 km/s");
         createCelestialBody("Venus", 2, 0xffcc00, 30, 35.02, "Venus is the second planet from the Sun.<br>Speed: 35.02 km/s");
         createCelestialBody("Earth", 2, 0x0000ff, 40, 29.78, "Earth is the third planet from the Sun.<br>Speed: 29.78 km/s");
@@ -125,6 +132,19 @@
         createCelestialBody("Saturn", 4, 0xcd853f, 80, 9.69, "Saturn is known for its stunning rings.<br>Speed: 9.69 km/s");
         createCelestialBody("Uranus", 3, 0x00ffff, 100, 6.81, "Uranus is a unique blue planet.<br>Speed: 6.81 km/s");
         createCelestialBody("Neptune", 3, 0x00008b, 120, 5.43, "Neptune is known for its deep blue color.<br>Speed: 5.43 km/s");
+
+        // Update Near-Earth Objects with NASA Data
+        createCelestialBody("Asteroid 101955 Bennu", 0.5, 0x8b4513, 150, 28, "Bennu is a carbonaceous asteroid targeted by NASA's OSIRIS-REx mission.<br>Speed: 28 km/h");
+        createCelestialBody("Asteroid 1862 Apollo", 1.4, 0x8b4513, 160, 24, "Apollo is a well-studied near-Earth asteroid.<br>Speed: 24 km/h");
+        createCelestialBody("Asteroid 2001 FO32", 0.9, 0x8b4513, 170, 124, "FO32 is a potentially hazardous asteroid that passed close to Earth in 2021.<br>Speed: 124 km/h");
+        createCelestialBody("Asteroid 99942 Apophis", 0.37, 0xff6347, 180, 34, "Apophis was once considered a risk for Earth.<br>Speed: 34 km/h");
+        createCelestialBody("Comet NEOWISE", 0.5, 0xadd8e6, 190, 100, "NEOWISE was visible to the naked eye in 2020.<br>Speed: 100 km/h");
+        createCelestialBody("Asteroid 162173 Ryugu", 0.9, 0x8b4513, 150, 25, "Ryugu is a carbonaceous asteroid targeted by Hayabusa2.<br>Speed: 25 km/h");
+        createCelestialBody("Asteroid 433 Eros", 1.5, 0x8b4513, 160, 24, "Eros was the first asteroid orbited by a spacecraft.<br>Speed: 24 km/h");
+        createCelestialBody("Asteroid 311P/PANSTARRS", 0.3, 0x8b4513, 170, 22, "PANSTARRS is a periodic asteroid with a 4.4-year orbit.<br>Speed: 22 km/h");
+        createCelestialBody("Asteroid 46610 Bésixdouze", 0.2, 0xff6347, 180, 25, "Bésixdouze is a potentially hazardous asteroid.<br>Speed: 25 km/h");
+        createCelestialBody("Asteroid 1999 RQ36", 0.5, 0xadd8e6, 190, 32, "RQ36 is the target of NASA's OSIRIS-REx mission.<br>Speed: 32 km/h");
+
 
         // Animation loop
         animate();
@@ -137,9 +157,9 @@
         const resetSpeedButton = document.getElementById('resetSpeed');
         const scaleButton = document.getElementById('scaleButton');
 
-        speedInput.addEventListener('input', (e) => {
-            timeSpeed = parseFloat(e.target.value);
-            speedLabel.textContent = `Speed Factor: ${timeSpeed.toFixed(1)}x`;
+        speedInput.addEventListener('input', (event) => {
+            timeSpeed = event.target.value;
+            speedLabel.textContent = `Speed Factor: ${timeSpeed}x`;
         });
 
         playPauseButton.addEventListener('click', () => {
@@ -149,35 +169,37 @@
 
         resetCameraButton.addEventListener('click', () => {
             camera.position.set(0, 0, 150);
+            controls.target.set(0, 0, 0);
             controls.update();
         });
 
         resetSpeedButton.addEventListener('click', () => {
             timeSpeed = 1;
             speedInput.value = timeSpeed;
-            speedLabel.textContent = `Speed Factor: ${timeSpeed.toFixed(1)}x`;
+            speedLabel.textContent = `Speed Factor: ${timeSpeed}x`;
         });
 
         scaleButton.addEventListener('click', () => {
             isScaled = !isScaled;
-            planets.forEach(({ planet, distance }) => {
-                planet.scale.set(isScaled ? 0.1 : 1, isScaled ? 0.1 : 1, isScaled ? 0.1 : 1);
+            scaleLabel.textContent = `Current Scale: ${isScaled ? 'Scaled' : 'Actual Size'}`;
+            planets.forEach(({ planet }) => {
+                planet.scale.set(isScaled ? 0.5 : 1, isScaled ? 0.5 : 1, isScaled ? 0.5 : 1);
             });
-            scaleLabel.textContent = `Current Scale: ${isScaled ? 'Scaled Size' : 'Actual Size'}`;
         });
 
-        // Mouse movement event
-        window.addEventListener('mousemove', onMouseMove, false);
-        window.addEventListener('resize', onWindowResize, false);
+        // Search functionality
+        searchBar.addEventListener('input', filterCelestialBodies);
+        window.addEventListener('resize', onWindowResize);
+        window.addEventListener('mousemove', onMouseMove);
     }
 
-    // Create a celestial body with orbit path
+    // Create celestial bodies
     function createCelestialBody(name, size, color, distance, speed, details) {
         const geometry = new THREE.SphereGeometry(size, 32, 32);
-        const material = new THREE.MeshBasicMaterial({ color }); // Ensure color is correctly set
+        const material = new THREE.MeshBasicMaterial({ color });
         const planet = new THREE.Mesh(geometry, material);
 
-        planet.userData = { name, details, speed, distance }; // Store distance in userData for later use
+        planet.userData = { name, details, speed, distance };
 
         // Position the planet
         planet.position.x = distance;
@@ -186,7 +208,7 @@
         const orbitGeometry = new THREE.CircleGeometry(distance, 64);
         const orbitMaterial = new THREE.LineBasicMaterial({ color: 0x808080, opacity: 0.5, transparent: true });
         const orbitPath = new THREE.LineLoop(orbitGeometry, orbitMaterial);
-        orbitPath.rotation.x = Math.PI / 2; // Rotate to lie flat in the XY plane
+        orbitPath.rotation.x = Math.PI / 2;
 
         // Add planet and orbit to the scene
         scene.add(orbitPath);
@@ -199,12 +221,24 @@
         if (isPaused) return;
 
         planets.forEach(({ planet, speed }) => {
-            const timeElapsed = Date.now() * 0.001 * timeSpeed; // Factor in time speed
-            const angle = timeElapsed * (speed / 10); // Adjust the speed for realistic movement
+            const timeElapsed = Date.now() * 0.001 * timeSpeed;
+            const angle = timeElapsed * (speed / 10);
 
             // Update planet position
             planet.position.x = planet.userData.distance * Math.cos(angle);
             planet.position.z = planet.userData.distance * Math.sin(angle);
+        });
+    }
+
+    // Function to filter celestial bodies based on search input
+    function filterCelestialBodies() {
+        const searchText = searchBar.value.toLowerCase();
+        planets.forEach(({ planet }) => {
+            if (planet.userData.name.toLowerCase().includes(searchText)) {
+                planet.visible = true;
+            } else {
+                planet.visible = false;
+            }
         });
     }
 
