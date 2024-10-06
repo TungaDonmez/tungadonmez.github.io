@@ -12,6 +12,8 @@ This is a simple 3D orrery web application that simulates the solar system. It f
 1. Clone the repository.
 2. Open `index.html` in your web browser.
 
+Or just visit tungadonmez.github.io
+
 ## Technologies Used
 
 - HTML
